@@ -1,30 +1,29 @@
-package org.groupf.dto;
+    package org.groupf.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
+    import jakarta.validation.constraints.*;
 
-import java.time.LocalDateTime;
+    import java.time.LocalDateTime;
 
-public record OrderCreateRequest(
-        @NotBlank (message = "Customer id is required")
-        String CustomerId,
+    public record OrderCreateRequest(
+            @NotBlank(message = "Customer id is required")
+            String customerId,
 
-        @NotBlank (message = "Product id is required")
-        String ProductId,
+            @NotBlank(message = "Product id is required")
+            String productId,
 
-        @NotBlank (message = "Product name is required")
-        String ProductName,
+            @NotBlank(message = "Product name is required")
+            String productName,
 
-        @NotBlank(message = "Quantity is required")
-        @Positive(message = "Quantity must be greater than 0")
-        Integer Quantity,
+            @NotNull(message = "Quantity is required")
+            @Min(1)
+            Integer quantity,
 
-        @NotBlank(message = "Total Price is required")
-        @Positive(message = "Total Price must be greater than 0")
-        Double TotalPrice,
+            @NotNull(message = "Total Price is required")
+            @DecimalMin(value = "0.0", inclusive = false)
+            Double totalPrice,
 
-        LocalDateTime orderDate,
+            LocalDateTime orderDate,
 
-        String status
-) {
-}
+            String status
+    ) {
+    }

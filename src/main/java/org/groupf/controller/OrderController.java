@@ -21,10 +21,10 @@ public class OrderController {
     public Order createOrder(@Valid @RequestBody OrderCreateRequest request) {
         Order order = new Order();
 
-        order.setCustomerId(request.CustomerId());
-        order.setProductId(request.ProductId());
-        order.setProductName(request.ProductName());
-        order.setQuantity(request.Quantity());
+        order.setCustomerId(request.customerId());
+        order.setProductId(request.productId());
+        order.setProductName(request.productName());
+        order.setQuantity(request.quantity());
         order.setOrderDate(request.orderDate());
         order.setStatus(request.status());
 
