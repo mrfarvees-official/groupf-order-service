@@ -1,0 +1,67 @@
+services:
+  order_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: groupf_order_service
+    ports:
+      - "3002:3002"
+    environment:
+      SERVER_PORT: 3002
+
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: order_db
+      POSTGRES_USER: groupf
+      POSTGRES_PASSWORD: groupf
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: groupf
+      RABBITMQ_PASSWORD: groupf
+      RABBITMQ_URL: amqp://groupf:groupf@rabbitmq:5672
+
+      PRODUCT_SERVICE_URL: http://host.docker.internal:3001
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - order_service_network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: order_service_postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: groupf
+      POSTGRES_PASSWORD: groupf
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - order_service_network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: order_service_rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: groupf
+      RABBITMQ_DEFAULT_PASS: groupf
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - order_service_network
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+
+networks:
+  order_service_network:
+    driver: bridge

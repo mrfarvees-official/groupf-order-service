@@ -3,11 +3,14 @@ package org.groupf.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.groupf.dto.OrderCreateRequest;
+import org.groupf.dto.ProductResponse;
 import org.groupf.entity.Order;
 import org.groupf.dto.OrderCreatedEvent;
 import org.groupf.publisher.OrderEventPublisher;
 import org.groupf.repository.OrderRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 @RestController
 @RequestMapping("/orders")
@@ -16,9 +19,29 @@ public class OrderController {
 
     private final OrderRepository orderRepository;
     private final OrderEventPublisher orderEventPublisher;
+    private final RestTemplate restTemplate;
+
+    @Value("${product.service.url}")
+    private String productServiceUrl;
 
     @PostMapping
     public Order createOrder(@Valid @RequestBody OrderCreateRequest request) {
+
+        ProductResponse product = restTemplate.getForObject(
+                productServiceUrl + "/products/" + request.productId(),
+                ProductResponse.class
+        );
+
+        if (product == null) {
+            throw new RuntimeException("Product not found with id: " + request.productId());
+        }
+
+        if (product.stock() < request.quantity()) {
+            throw new RuntimeException("Insufficient stock for product id: " + request.productId());
+        }
+
+        double totalPrice = product.unitPrice() * request.quantity();
+
         Order order = new Order();
 
         order.setCustomerId(request.customerId());
@@ -26,6 +49,7 @@ public class OrderController {
         order.setProductName(request.productName());
         order.setQuantity(request.quantity());
         order.setOrderDate(request.orderDate());
+        order.setTotalPrice(totalPrice);
         order.setStatus(request.status());
 
         Order savedOrder = orderRepository.save(order);
