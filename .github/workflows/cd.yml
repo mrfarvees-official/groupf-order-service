@@ -1,0 +1,116 @@
+name: Deploy Order Service to Azure VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Azure VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AZURE_HOST }}
+          username: ${{ secrets.AZURE_USER }}
+          key: ${{ secrets.AZURE_SSH_KEY }}
+          port: 22
+          script: |
+            mkdir -p ~/groupf-order-service
+            cd ~/groupf-order-service
+
+            cat > docker-compose.yml << 'EOF'
+            services:
+              postgres:
+                image: postgres:16-alpine
+                container_name: order_service_postgres
+                restart: always
+                ports:
+                  - "5432:5432"
+                environment:
+                  POSTGRES_DB: order_db
+                  POSTGRES_USER: groupf
+                  POSTGRES_PASSWORD: groupf
+                volumes:
+                  - postgres_order_data:/var/lib/postgresql/data
+                healthcheck:
+                  test: ["CMD-SHELL", "pg_isready -U groupf -d order_db"]
+                  interval: 5s
+                  timeout: 5s
+                  retries: 10
+                networks:
+                  - order_service_network
+
+              rabbitmq:
+                image: rabbitmq:3-management-alpine
+                container_name: order_service_rabbitmq
+                restart: always
+                ports:
+                  - "5672:5672"
+                  - "15672:15672"
+                environment:
+                  RABBITMQ_DEFAULT_USER: groupf
+                  RABBITMQ_DEFAULT_PASS: groupf
+                volumes:
+                  - rabbitmq_order_data:/var/lib/rabbitmq
+                healthcheck:
+                  test: ["CMD", "rabbitmq-diagnostics", "ping"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 10
+                networks:
+                  - order_service_network
+
+              order_service:
+                image: farvees/groupf-order-service:latest
+                container_name: groupf_order_service
+                restart: always
+                ports:
+                  - "3002:3002"
+                environment:
+                  SERVER_PORT: 3002
+
+                  POSTGRES_HOST: postgres
+                  POSTGRES_PORT: 5432
+                  POSTGRES_DB: order_db
+                  POSTGRES_USER: groupf
+                  POSTGRES_PASSWORD: groupf
+
+                  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/order_db
+                  SPRING_DATASOURCE_USERNAME: groupf
+                  SPRING_DATASOURCE_PASSWORD: groupf
+
+                  RABBITMQ_HOST: rabbitmq
+                  RABBITMQ_PORT: 5672
+                  RABBITMQ_USER: groupf
+                  RABBITMQ_PASSWORD: groupf
+                  RABBITMQ_URL: amqp://groupf:groupf@rabbitmq:5672
+
+                  PRODUCT_SERVICE_URL: http://host.docker.internal:3001
+                extra_hosts:
+                  - "host.docker.internal:host-gateway"
+                depends_on:
+                  postgres:
+                    condition: service_healthy
+                  rabbitmq:
+                    condition: service_healthy
+                networks:
+                  - order_service_network
+
+            volumes:
+              postgres_order_data:
+              rabbitmq_order_data:
+
+            networks:
+              order_service_network:
+                driver: bridge
+            EOF
+
+            echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+            sudo docker compose pull
+            sudo docker compose up -d
+            sudo docker image prune -f
+            sudo docker ps
