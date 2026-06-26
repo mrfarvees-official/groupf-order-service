@@ -15,8 +15,9 @@ jobs:
         with:
           host: ${{ secrets.AZURE_HOST }}
           username: ${{ secrets.AZURE_USER }}
-          key: ${{ secrets.AZURE_SSH_KEY }}
+          key: ${{ secrets.ORDER_SERVICE_SECRETS }}
           port: 22
+          script_stop: true
           script: |
             mkdir -p ~/groupf-order-service
             cd ~/groupf-order-service
