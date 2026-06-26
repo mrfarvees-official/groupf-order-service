@@ -17,7 +17,6 @@ jobs:
           username: ${{ secrets.AZURE_USER }}
           key: ${{ secrets.ORDER_SERVICE_SECRETS }}
           port: 22
-          script_stop: true
           script: |
             mkdir -p ~/groupf-order-service
             cd ~/groupf-order-service
@@ -31,9 +30,9 @@ jobs:
                 ports:
                   - "5432:5432"
                 environment:
-                  - POSTGRES_DB=order_db
-                  - POSTGRES_USER=groupf
-                  - POSTGRES_PASSWORD=groupf
+                  POSTGRES_DB: order_db
+                  POSTGRES_USER: groupf
+                  POSTGRES_PASSWORD: groupf
                 volumes:
                   - postgres_order_data:/var/lib/postgresql/data
                 healthcheck:
@@ -52,8 +51,8 @@ jobs:
                   - "5672:5672"
                   - "15672:15672"
                 environment:
-                  - RABBITMQ_DEFAULT_USER=groupf
-                  - RABBITMQ_DEFAULT_PASS=groupf
+                  RABBITMQ_DEFAULT_USER: groupf
+                  RABBITMQ_DEFAULT_PASS: groupf
                 volumes:
                   - rabbitmq_order_data:/var/lib/rabbitmq
                 healthcheck:
@@ -71,25 +70,25 @@ jobs:
                 ports:
                   - "3002:3002"
                 environment:
-                  - SERVER_PORT=3002
+                  SERVER_PORT: 3002
 
-                  - POSTGRES_HOST=postgres
-                  - POSTGRES_PORT=5432
-                  - POSTGRES_DB=order_db
-                  - POSTGRES_USER=groupf
-                  - POSTGRES_PASSWORD=groupf
+                  POSTGRES_HOST: postgres
+                  POSTGRES_PORT: 5432
+                  POSTGRES_DB: order_db
+                  POSTGRES_USER: groupf
+                  POSTGRES_PASSWORD: groupf
 
-                  - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/order_db
-                  - SPRING_DATASOURCE_USERNAME=groupf
-                  - SPRING_DATASOURCE_PASSWORD=groupf
+                  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/order_db"
+                  SPRING_DATASOURCE_USERNAME: groupf
+                  SPRING_DATASOURCE_PASSWORD: groupf
 
-                  - RABBITMQ_HOST=rabbitmq
-                  - RABBITMQ_PORT=5672
-                  - RABBITMQ_USER=groupf
-                  - RABBITMQ_PASSWORD=groupf
-                  - RABBITMQ_URL=amqp://groupf:groupf@rabbitmq:5672
+                  RABBITMQ_HOST: rabbitmq
+                  RABBITMQ_PORT: 5672
+                  RABBITMQ_USER: groupf
+                  RABBITMQ_PASSWORD: groupf
+                  RABBITMQ_URL: "amqp://groupf:groupf@rabbitmq:5672"
 
-                  - PRODUCT_SERVICE_URL=http://host.docker.internal:3001
+                  PRODUCT_SERVICE_URL: "http://host.docker.internal:3001"
                 extra_hosts:
                   - "host.docker.internal:host-gateway"
                 depends_on:
@@ -108,8 +107,6 @@ jobs:
               order_service_network:
                 driver: bridge
             EOF
-
-            sudo docker compose config
 
             echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
