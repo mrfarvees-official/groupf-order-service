@@ -10,6 +10,9 @@ import org.groupf.dto.OrderCreatedEvent;
 import org.groupf.publisher.OrderEventPublisher;
 import org.groupf.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
@@ -71,8 +74,12 @@ public class OrderController {
     }
 
     @GetMapping
-    public List<Order> getAllOrders() {
-        return orderRepository.findAll();
+    public Page<Order> getAllOrders(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ){
+        Pageable pageable = PageRequest.of(page, size);
+        return orderRepository.findAll(pageable);
     }
 
     @GetMapping("/{orderId}")
