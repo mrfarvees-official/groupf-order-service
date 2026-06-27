@@ -1,4 +1,5 @@
 package org.groupf.controller;
+import java.util.List;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -67,5 +68,16 @@ public class OrderController {
         orderEventPublisher.publishOrderCreatedEvent(event);
 
         return savedOrder;
+    }
+
+    @GetMapping
+    public List<Order> getAllOrders() {
+        return orderRepository.findAll();
+    }
+
+    @GetMapping("/{orderId}")
+    public Order getOrderById(@PathVariable String orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
     }
 }
