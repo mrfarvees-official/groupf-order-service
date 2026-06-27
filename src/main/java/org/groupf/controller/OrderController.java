@@ -120,4 +120,14 @@ public class OrderController {
         return orderRepository.save(existingOrder);
     }
 
+    @DeleteMapping("/{orderId}")
+    public String deleteOrder(@PathVariable String orderId) {
+        Order existingOrder = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+
+        orderRepository.delete(existingOrder);
+
+        return "Order deleted successfully with id: " + orderId;
+    }
+
 }
