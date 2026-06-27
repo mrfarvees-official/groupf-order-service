@@ -87,4 +87,37 @@ public class OrderController {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
     }
+
+    @PutMapping("/{orderId}")
+    public Order updateOrder(
+            @PathVariable String orderId,
+            @Valid @RequestBody OrderCreateRequest request
+    ) {
+        Order existingOrder = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+
+        ProductResponse product = restTemplate.getForObject(
+                productServiceUrl + "/products/" + existingOrder.getProductId(),
+                ProductResponse.class
+        );
+
+        if (product == null) {
+            throw new RuntimeException("Product not found with id: " + existingOrder.getProductId());
+        }
+
+        if (product.stock() < request.quantity()) {
+            throw new RuntimeException("Insufficient stock for product id: " + existingOrder.getProductId());
+        }
+
+        double totalPrice = product.unitPrice() * request.quantity();
+
+        existingOrder.setProductName(product.name());
+        existingOrder.setQuantity(request.quantity());
+        existingOrder.setTotalPrice(totalPrice);
+        existingOrder.setOrderDate(request.orderDate());
+        existingOrder.setStatus(request.status());
+
+        return orderRepository.save(existingOrder);
+    }
+
 }
