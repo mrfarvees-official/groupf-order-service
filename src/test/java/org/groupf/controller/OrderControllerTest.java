@@ -17,8 +17,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -112,8 +111,40 @@ class OrderControllerTest {
                 .publishOrderCreatedEvent(any(OrderCreatedEvent.class));
     }
 
+
     @Test
-    void createOrder_whenProductNotFound_shouldThrowException() {
+    void createOrder_whenRequestBodyIsNull_shouldReturnBadRequest() throws Exception {
+
+        mockMvc.perform(post("/orders")
+                        .contentType("application/json")
+                        .content(""))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(restTemplate);
+        verifyNoInteractions(orderRepository);
+        verifyNoInteractions(orderEventPublisher);
+    }
+
+
+    @Test
+    void createOrder_whenJsonIsMalformed_shouldReturnBadRequest() throws Exception {
+
+        String invalidJson = "{ \"customerId\": , \"productId\": }";
+
+        mockMvc.perform(post("/orders")
+                        .contentType("application/json")
+                        .content(invalidJson))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(restTemplate);
+        verifyNoInteractions(orderRepository);
+    }
+
+
+
+    @Test
+    void createOrder_whenProductNotFound_shouldThrowException() throws Exception {
+
         LocalDateTime orderDate = LocalDateTime.of(2026, 6, 27, 10, 30);
 
         OrderCreateRequest request = new OrderCreateRequest(
@@ -137,7 +168,7 @@ class OrderControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
         );
 
-        assertTrue(exception.getMessage().contains("Product not found with id: product_9999"));
+        assertTrue(exception.getCause().getMessage().contains("Product not found with id: product_9999"));
 
         verify(restTemplate, times(1)).getForObject(
                 "http://localhost:8081/products/product_9999",
@@ -183,7 +214,7 @@ class OrderControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
         );
 
-        assertTrue(exception.getMessage().contains("Insufficient stock for product id: product_0001"));
+        assertTrue(exception.getCause().getMessage().contains("Insufficient stock for product id: product_0001"));
 
         verify(restTemplate, times(1)).getForObject(
                 "http://localhost:8081/products/product_0001",
@@ -221,5 +252,45 @@ class OrderControllerTest {
 
         verify(orderEventPublisher, never())
                 .publishOrderCreatedEvent(any(OrderCreatedEvent.class));
+    }
+
+    @Test
+    void createOrder_whenQuantityEqualsStock_shouldPass() throws Exception {
+
+        ProductResponse product = new ProductResponse(
+                "p1", "Laptop", 1000.0, "desc", "cat", 5
+        );
+
+        when(restTemplate.getForObject(anyString(), eq(ProductResponse.class)))
+                .thenReturn(product);
+
+        OrderCreateRequest request = new OrderCreateRequest(
+                "c1", "p1", "Laptop", 5, 1000.0,
+                LocalDateTime.now(), "PENDING"
+        );
+
+        when(orderRepository.save(any(Order.class)))
+                .thenAnswer(i -> {
+                    Order order = i.getArgument(0);
+                    order.setOrderId("order_0002");
+                    return order;
+                });
+
+        mockMvc.perform(post("/orders")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderId").value("order_0002"))
+                .andExpect(jsonPath("$.quantity").value(5))
+                .andExpect(jsonPath("$.totalPrice").value(5000.0));
+
+
+        verify(orderRepository, times(1)).save(any(Order.class));
+
+        verify(orderEventPublisher, times(1))
+                .publishOrderCreatedEvent(any(OrderCreatedEvent.class));
+
+        verify(restTemplate, times(1))
+                .getForObject(anyString(), eq(ProductResponse.class));
     }
 }
